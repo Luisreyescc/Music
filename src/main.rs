@@ -1,18 +1,16 @@
-mod view {
-    pub mod main_window; 
+mod model {
+    pub mod miner;
 }
-
-use gtk4::prelude::*;
-use gtk4::Application;
+use std::env;
 
 fn main() {
-    let app = Application::builder()
-        .application_id("com.example.MusicManager")
-        .build();
+    let args: Vec<String> = env::args().collect();
+   
+    if args.len() < 2 {
+        eprintln!("Usage: cargo run <directory>");
+        std::process::exit(1);
+    }
 
-    app.connect_activate(|app| {
-        view::main_window::create_main_window(app);
-    });
-
-    app.run();
+    let directory = &args[1];
+    model::miner::extract(directory);
 }
