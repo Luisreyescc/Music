@@ -1,5 +1,6 @@
 mod model {
     pub mod miner;
+    pub mod song_settings;
 }
 use std::env;
 
