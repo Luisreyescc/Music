@@ -1,7 +1,6 @@
-mod model {
-    pub mod miner;
-    pub mod song_settings;
-}
+mod model;
+use model::music_miner::miner;
+use model::database::config_file;
 use std::env;
 
 fn main() {
@@ -13,5 +12,11 @@ fn main() {
     }
 
     let directory = &args[1];
-    model::miner::extract(directory);
+    miner::extract(directory);
+    
+    if let Err(e) = config_file::create_config_file() {
+        eprintln!("Error creating or verifying Config.TOML: {}", e);
+    }
+
+
 }

@@ -1,4 +1,4 @@
-use crate::model::song_settings; 
+use crate::model::music_miner::song_settings; 
 extern crate id3;
 use std::collections::HashMap;
 use id3::{Tag, Version};
