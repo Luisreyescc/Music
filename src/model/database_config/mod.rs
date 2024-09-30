@@ -6,7 +6,8 @@
 ///
 /// ## Submodules
 ///
-/// - `config_file`: Implements functions for reading and writing configuration files.
+/// - `config`: Implements functions for reading and writing configuration files.
+/// - `database_tables`: Implement the creation of the database tables.
 
-pub mod config_file; 
-pub mod database;
+pub mod config; 
+pub mod database_tables;

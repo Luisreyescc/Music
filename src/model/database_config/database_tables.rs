@@ -1,33 +1,8 @@
 extern crate dirs;
-use crate::model::database_config::config_file; 
-use std::fs;
-use std::io;
-use std::path::PathBuf;
 use rusqlite::{Connection, Result};
 
-fn create_database_file() -> io::Result<PathBuf> {
-    let config_dir = config_file::create_config_dir()?;
-    let file_path = config_dir.join("database.db");
-
-    fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .append(false)
-        .open(&file_path)?;
-
-    Ok(file_path)
-}
-
-pub fn create_database_connection() -> Result<Connection> {
-    let file_path = match create_database_file() {
-        Ok(path) => path,
-        Err(e) => return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e))),
-    };
-
-    let connection = Connection::open(file_path)?;
-    Ok(connection)
-}
-
+/// Creates the `types` table if it doesn't exist.
+/// Stores performer types with an ID and description.
 fn create_table_types(connection: &Connection) -> Result<()> {
     connection.execute(
         "CREATE TABLE IF NOT EXISTS types (
@@ -38,6 +13,8 @@ fn create_table_types(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Creates the `performers` table if it doesn't exist.
+/// Stores performers, linked to `types` via `id_type`.
 fn create_table_performers(connection: &Connection) -> Result<()> {
     connection.execute(
         "CREATE TABLE IF NOT EXISTS performers (
@@ -50,6 +27,8 @@ fn create_table_performers(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Creates the `persons` table if it doesn't exist.
+/// Stores individual person details (stage name, real name, etc.).
 fn create_table_persons(connection: &Connection) -> Result<()> {
     connection.execute(
         "CREATE TABLE IF NOT EXISTS persons (
@@ -63,6 +42,8 @@ fn create_table_persons(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Creates the `groups` table if it doesn't exist.
+/// Stores group details such as name and active years.
 fn create_table_groups(connection: &Connection) -> Result<()> {
     connection.execute(
         "CREATE TABLE IF NOT EXISTS groups (
@@ -75,6 +56,8 @@ fn create_table_groups(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Creates the `in_group` table if it doesn't exist.
+/// Links persons and groups.
 fn create_table_in_group(connection: &Connection) -> Result<()> {
     connection.execute(
         "CREATE TABLE IF NOT EXISTS in_group (
@@ -88,6 +71,8 @@ fn create_table_in_group(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Creates the `albums` table if it doesn't exist.
+/// Stores album details like path, name, and year.
 fn create_table_albums(connection: &Connection) -> Result<()> {
     connection.execute(
         "CREATE TABLE IF NOT EXISTS albums (
@@ -100,6 +85,8 @@ fn create_table_albums(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Creates the `rolas` table if it doesn't exist.
+/// Stores song details, linking to `performers` and `albums`.
 fn create_table_rolas(connection: &Connection) -> Result<()> {
     connection.execute(
         "CREATE TABLE IF NOT EXISTS rolas (
@@ -118,6 +105,7 @@ fn create_table_rolas(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Creates all necessary tables in the database.
 pub fn create_all_tables(connection: &Connection) -> Result<()> {
     create_table_types(connection)?;
     create_table_performers(connection)?;
