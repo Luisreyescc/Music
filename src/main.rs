@@ -1,6 +1,6 @@
 mod model;
 use model::music_miner::miner;
-use model::database::config_file;
+use model::database_config::{config_file, database};
 use std::env;
 
 fn main() {
@@ -18,5 +18,17 @@ fn main() {
         eprintln!("Error creating or verifying Config.TOML: {}", e);
     }
 
+    match database::create_database_connection() {
+        Ok(connection) => {
+            if let Err(e) = database::create_all_tables(&connection) {
+                eprintln!("Error creating tables: {}", e);
+            } else {
+                println!("All tables created successfully!");
+            }
+        }
+        Err(e) => {
+            eprintln!("Error connecting to the database: {}", e);
+        }
+    }
 
 }

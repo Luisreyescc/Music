@@ -10,4 +10,4 @@
 /// - `database`: Manages configuration and interaction with configuration files.
 
 pub mod music_miner;
-pub mod database;
+pub mod database_config;

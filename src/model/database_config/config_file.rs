@@ -13,7 +13,7 @@ use std::path::PathBuf;
 ///
 /// - `Ok(PathBuf)` containing the path to the `musicmanager` directory.
 /// - `Err(io::Error)` if the configuration directory could not be found or there was an error creating the directory.
-fn create_config_dir() -> io::Result<PathBuf> {
+pub fn create_config_dir() -> io::Result<PathBuf> {
     if let Some(mut config_dir) = dirs::config_dir() {
         config_dir.push("musicmanager");
         fs::create_dir_all(&config_dir)?; 
