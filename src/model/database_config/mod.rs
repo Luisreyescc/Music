@@ -11,3 +11,4 @@
 
 pub mod config; 
 pub mod database_tables;
+pub mod populate_db;

@@ -15,17 +15,22 @@ use std::fs;
 ///
 /// # Panics
 /// Panics if the directory cannot be read.
-pub fn extract(mp3_dir_path: &str) {
+pub fn extract(mp3_dir_path: &str) -> Vec<HashMap<String, String>> {
     let songs = fs::read_dir(mp3_dir_path).expect("Could not read the directory.");
+    let mut extracted_data = Vec::new();
 
     for song in songs {
         let song = song.expect("Could not read the song.");
         let path = song.path();
 
-        if process_song(&path).is_err() {
+        if let Some(tag_map) = process_song(&path) {
+            extracted_data.push(tag_map);
+        } else {
             println!("{:?} is not a valid MP3 file", path);
         }
     }
+
+    extracted_data
 }
 
 /// # Process Song function
@@ -40,9 +45,9 @@ pub fn extract(mp3_dir_path: &str) {
 /// # Returns
 /// * `Ok(())` if the file was successfully processed.
 /// * `Err(())` if the file is not a valid MP3 file or if it has no readable tags.
-fn process_song(path: &std::path::Path) -> Result<(), ()> {
+fn process_song(path: &std::path::Path) -> Option<HashMap<String, String>> {
     if !path.is_file() || path.extension().and_then(|ext| ext.to_str()) != Some("mp3") {
-        return Err(());
+        return None;
     }
 
     println!("Processing file {:?}", path);
@@ -51,8 +56,9 @@ fn process_song(path: &std::path::Path) -> Result<(), ()> {
         Ok(tag) => {
             if tag.version() == Version::Id3v24 {
                 println!("ID3v2.4 tag found in: {:?} \n", path);
-                song_settings::assign_tag(&tag);
-                print_tag_info(song_settings::assign_tag(&tag));
+                let tag_map = song_settings::assign_tag(&tag);
+                print_tag_info(&tag_map);
+                return Some(tag_map);
             } else {
                 println!("Tag is not ID3v2.4, file: {:?} \n", path);
             }
@@ -62,10 +68,10 @@ fn process_song(path: &std::path::Path) -> Result<(), ()> {
         }
     }
 
-    Ok(())
+    None
 }
 
-fn print_tag_info(map: HashMap<String, String>) {
+fn print_tag_info(map: &HashMap<String, String>) {
     for (tag, tag_content) in map.iter() {
         println!("{tag}: {tag_content} \n"); 
     }
