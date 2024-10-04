@@ -48,9 +48,17 @@ fn insert_or_get_album(connection: &Connection, album: &str, year: i32) -> Resul
     }
 }
 
-/// Inserts a new track (song) into the "rolas" table.
+/// Checks if a song already exists in the "rolas" table, based on title, performer, and album.
+/// Returns `true` if the song exists, `false` otherwise.
+fn rola_exists(connection: &Connection, performer_id: i64, album_id: i64, title: &str) -> Result<bool> {
+    let mut stmt = connection.prepare("SELECT EXISTS(SELECT 1 FROM rolas WHERE id_performer = ?1 AND id_album = ?2 AND title = ?3)")?;
+    let exists: bool = stmt.query_row(params![performer_id, album_id, title], |row| row.get(0))?;
+    Ok(exists)
+}
+
+/// Inserts a new track (song) into the "rolas" table only if it doesn't already exist.
 /// This function adds a new track with the associated performer and album IDs, title, track number, year, and genre.
-fn insert_rola(
+fn insert_rola_if_not_exists(
     connection: &Connection,
     performer_id: i64,
     album_id: i64,
@@ -59,13 +67,16 @@ fn insert_rola(
     year: i32,
     genre: &str
 ) -> Result<()> {
-    connection.execute(
-        "INSERT INTO rolas (id_performer, id_album, title, track, year, genre, path) 
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
-        params![performer_id, album_id, title, track, year, genre]
-    )?;
+    if !rola_exists(connection, performer_id, album_id, title)? {
+        connection.execute(
+            "INSERT INTO rolas (id_performer, id_album, title, track, year, genre, path) 
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params![performer_id, album_id, title, track, year, genre]
+        )?;
+    }
     Ok(())
 }
+
 
 /// Populates the database with a new song (track) based on the provided tag map.
 /// The tag map contains metadata such as the artist's name, album, title, track number, year, and genre.
@@ -82,7 +93,7 @@ pub fn populate_database(connection: &Connection, tag_map: HashMap<String, Strin
 
     let album_id = insert_or_get_album(connection, album, year)?;
 
-    insert_rola(connection, performer_id, album_id, title, track_number, year, genre)?;
+    insert_rola_if_not_exists(connection, performer_id, album_id, title, track_number, year, genre)?;
 
     Ok(())
 }
