@@ -1,7 +1,11 @@
 mod model;
+mod controller;
+
+use controller::controller::cleanup_missing_songs;
 use model::music_miner::miner;
 use model::database_config::{config, database_tables, populate_db};
 use std::env;
+use std::path::Path;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -31,7 +35,14 @@ fn main() {
                 } else {
                     println!("Types inserted successfully!");
                 }
-               
+              
+                let directory_path = Path::new(directory);
+                if let Err(e) = cleanup_missing_songs(&connection, directory_path) {
+                    eprintln!("Error cleaning up missing songs: {}", e);
+                } else {
+                    println!("Missing songs cleaned up successfully!");
+                }
+
                 for tag_map in extracted_data {
                     if let Err(e) = populate_db::populate_database(&connection, tag_map) {
                         eprintln!("Error populating database: {}", e);

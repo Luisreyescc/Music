@@ -77,7 +77,6 @@ fn insert_rola_if_not_exists(
     Ok(())
 }
 
-
 /// Populates the database with a new song (track) based on the provided tag map.
 /// The tag map contains metadata such as the artist's name, album, title, track number, year, and genre.
 /// It first finds or inserts the performer and album, then inserts the new track (song).
