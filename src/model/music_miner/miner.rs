@@ -22,8 +22,11 @@ pub fn extract(mp3_dir_path: &str) -> Vec<HashMap<String, String>> {
     for song in songs {
         let song = song.expect("Could not read the song.");
         let path = song.path();
+        let album_path = path.parent().expect("Could not read the album directory.");
 
-        if let Some(tag_map) = process_song(&path) {
+        if let Some(mut tag_map) = process_song(&path) {
+            tag_map.insert("Path".to_string(), path.to_str().unwrap().to_string());
+            tag_map.insert("AlbumPath".to_string(), album_path.to_str().unwrap().to_string());
             extracted_data.push(tag_map);
         } else {
             println!("{:?} is not a valid MP3 file", path);
