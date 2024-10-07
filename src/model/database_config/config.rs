@@ -42,7 +42,6 @@ pub fn create_config_file() -> io::Result<()> {
             let _file = fs::OpenOptions::new()
                 .write(true)
                 .create(true)
-                .append(false)
                 .open(&file_path)?;
 
             Ok(())
@@ -71,7 +70,7 @@ fn create_database_file() -> io::Result<PathBuf> {
     fs::OpenOptions::new()
         .write(true)
         .create(true)
-        .append(false)
+        .truncate(true)
         .open(&file_path)?;
 
     Ok(file_path)
