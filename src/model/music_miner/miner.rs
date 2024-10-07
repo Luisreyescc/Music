@@ -3,37 +3,68 @@ extern crate id3;
 use std::collections::HashMap;
 use id3::{Tag, Version};
 use std::fs;
+use std::path::Path;
 
 /// # Extract function
 ///
-/// Traverses the given directory and processes each file in it.
-/// For each MP3 file, it calls the `process_song()` function to handle the file's metadata.
-/// If an error occurs while reading the directory or processing a file, it prints a message.
+/// Recursively traverses the specified directory and processes each file found in it and its subdirectories.
+/// For each MP3 file, it calls the `process_song()` function to extract and handle the file's metadata.
+/// The function collects the metadata for all valid MP3 files in the directory and returns it as a vector of hash maps.
+/// Each hash map contains information like the file path and album path. If an error occurs while reading a file or directory, a message is printed, and the process continues.
 ///
 /// # Arguments
-/// * `mp3_dir_path` - The path to the directory containing MP3 files.
+/// * `mp3_dir_path` - A string slice that holds the path to the directory containing MP3 files.
+///
+/// # Returns
+/// * `Vec<HashMap<String, String>>` - A vector of hash maps where each map contains metadata about an MP3 file.
 ///
 /// # Panics
 /// Panics if the directory cannot be read.
 pub fn extract(mp3_dir_path: &str) -> Vec<HashMap<String, String>> {
-    let songs = fs::read_dir(mp3_dir_path).expect("Could not read the directory.");
     let mut extracted_data = Vec::new();
-
-    for song in songs {
-        let song = song.expect("Could not read the song.");
-        let path = song.path();
-        let album_path = path.parent().expect("Could not read the album directory.");
-
-        if let Some(mut tag_map) = process_song(&path) {
-            tag_map.insert("Path".to_string(), path.to_str().unwrap().to_string());
-            tag_map.insert("AlbumPath".to_string(), album_path.to_str().unwrap().to_string());
-            extracted_data.push(tag_map);
-        } else {
-            println!("{:?} is not a valid MP3 file", path);
-        }
-    }
+    
+    visit_dirs(Path::new(mp3_dir_path), &mut extracted_data);
 
     extracted_data
+}
+
+/// # Visit Directories function
+///
+/// Recursively traverses the directory structure starting from the provided `dir` path.
+/// For each subdirectory, the function calls itself to continue traversing.
+/// For each file, the function checks if it's an MP3 file by calling the `process_song()` function.
+/// If the file is an MP3, it extracts metadata and adds it to the `extracted_data` vector.
+/// The metadata includes the file path and the album path (the parent directory).
+/// If a file is not a valid MP3 file, a warning is printed.
+///
+/// # Arguments
+/// * `dir` - A reference to a `Path` that represents the directory to be traversed.
+/// * `extracted_data` - A mutable reference to a vector of hash maps, which stores metadata for each MP3 file found.
+///
+/// # Panics
+/// Panics if the directory cannot be read.
+fn visit_dirs(dir: &Path, extracted_data: &mut Vec<HashMap<String, String>>) {
+    if dir.is_dir() {
+        let music = fs::read_dir(dir).expect("Could not read the directory.");
+        
+        for song in music {
+            let song = song.expect("Could not read the entry.");
+            let path = song.path();
+            
+            if path.is_dir() {
+                visit_dirs(&path, extracted_data);
+            } else if path.is_file() {
+                if let Some(mut tag_map) = process_song(&path) {
+                    let album_path = path.parent().unwrap_or_else(|| Path::new("")).to_path_buf();
+                    tag_map.insert("Path".to_string(), path.to_str().unwrap().to_string());
+                    tag_map.insert("AlbumPath".to_string(), album_path.to_str().unwrap().to_string());
+                    extracted_data.push(tag_map);
+                } else {
+                    println!("{:?} is not a valid MP3 file", path);
+                }
+            }
+        }
+    }
 }
 
 /// # Process Song function
