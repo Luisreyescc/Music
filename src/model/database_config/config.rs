@@ -63,7 +63,7 @@ pub fn create_config_file() -> io::Result<()> {
 ///
 /// - `Ok(PathBuf)` containing the path to the `database.db` file if it was created successfully or already exists.
 /// - `Err(io::Error)` if there was an error creating the file or directory.
-fn create_database_file() -> io::Result<PathBuf> {
+pub fn create_database_file() -> io::Result<PathBuf> {
     let config_dir = create_config_dir()?;
     let file_path = config_dir.join("database.db");
 
@@ -74,24 +74,4 @@ fn create_database_file() -> io::Result<PathBuf> {
         .open(&file_path)?;
 
     Ok(file_path)
-}
-
-/// Creates a connection to the SQLite database located at `~/.config/musicmanager/database.db`.
-///
-/// This function first ensures that the `database.db` file exists by calling `create_database_file()`.
-/// Then, it attempts to create an SQLite connection to this database file. If successful,
-/// the connection object is returned for further database operations.
-///
-/// # Returns
-///
-/// - `Ok(Connection)` if the connection to the database was established successfully.
-/// - `Err(rusqlite::Error)` if there was an error creating the database file or opening the connection.
-pub fn create_database_connection() -> Result<Connection> {
-    let file_path = match create_database_file() {
-        Ok(path) => path,
-        Err(e) => return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e))),
-    };
-
-    let connection = Connection::open(file_path)?;
-    Ok(connection)
 }

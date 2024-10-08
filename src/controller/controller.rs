@@ -2,6 +2,7 @@ use rusqlite::{params, Connection, Result};
 use std::collections::HashSet;
 use std::path::Path; 
 use crate::model::music_miner::miner; 
+use crate::config::create_database_file;
 
 /// Retrieves song titles from the database and returns them as a set of strings.
 ///
@@ -56,4 +57,24 @@ pub fn cleanup_missing_songs(connection: &Connection, directory_path: &Path) -> 
     }
     
     Ok(())
+}
+
+/// Creates a connection to the SQLite database located at `~/.config/musicmanager/database.db`.
+///
+/// This function first ensures that the `database.db` file exists by calling `create_database_file()`.
+/// Then, it attempts to create an SQLite connection to this database file. If successful,
+/// the connection object is returned for further database operations.
+///
+/// # Returns
+///
+/// - `Ok(Connection)` if the connection to the database was established successfully.
+/// - `Err(rusqlite::Error)` if there was an error creating the database file or opening the connection.
+pub fn create_database_connection() -> Result<Connection> {
+    let file_path = match create_database_file() {
+        Ok(path) => path,
+        Err(e) => return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e))),
+    };
+
+    let connection = Connection::open(file_path)?;
+    Ok(connection)
 }

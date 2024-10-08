@@ -2,7 +2,7 @@ mod model;
 mod controller;
 mod view;
 
-use controller::controller::cleanup_missing_songs;
+use controller::controller::{cleanup_missing_songs, create_database_connection};
 use std::collections::HashMap;
 use model::music_miner::miner;
 use model::database_config::{config, database_tables, populate_db};
@@ -29,7 +29,7 @@ fn run_data_pipeline(directory: &str) {
         eprintln!("Error creating or verifying Config.TOML: {}", e);
     }
 
-    match config::create_database_connection() {
+    match create_database_connection() {
         Ok(connection) => {
             if let Err(e) = create_and_populate_tables(&connection) {
                 eprintln!("Error setting up the database: {}", e);
