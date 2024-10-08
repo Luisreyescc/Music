@@ -4,6 +4,48 @@ use std::path::Path;
 use crate::model::music_miner::miner; 
 use crate::config::create_database_file;
 
+/// Represents a song with its title, artist, and album.
+pub struct Song {
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+}
+
+
+/// Retrieves a list of songs from the database.
+///
+/// # Arguments
+///
+/// * `connection` - A reference to the database connection.
+///
+/// # Returns
+///
+/// This function returns a `Result` containing a vector of `Song`
+/// structs if the operation is successful, or an error if it fails.
+pub fn get_songs_from_database(connection: &Connection) -> Result<Vec<Song>> {
+    let mut stmt = connection.prepare("
+        SELECT rolas.title, performers.name, albums.name
+        FROM rolas
+        JOIN performers ON rolas.id_performer = performers.id_performer
+        JOIN albums ON rolas.id_album = albums.id_album
+    ")?;
+
+    let song_iter = stmt.query_map([], |row| {
+        Ok(Song {
+            title: row.get(0)?, 
+            artist: row.get(1)?,
+            album: row.get(2)?, 
+        })
+    })?;
+
+    let mut songs = Vec::new();
+    for song in song_iter {
+        songs.push(song?);
+    }
+
+    Ok(songs)
+}
+
 /// Retrieves song titles from the database and returns them as a set of strings.
 ///
 /// # Arguments
