@@ -104,9 +104,9 @@ fn insert_or_update_album(connection: &Connection, album: &str, year: i32, path:
 
 /// Checks if a song already exists in the "rolas" table, based on title, performer, and album.
 /// Returns `true` if the song exists, `false` otherwise.
-fn rola_exists(connection: &Connection, performer_id: i64, album_id: i64, title: &str) -> Result<bool> {
-    let mut stmt = connection.prepare("SELECT EXISTS(SELECT 1 FROM rolas WHERE id_performer = ?1 AND id_album = ?2 AND title = ?3)")?;
-    let exists: bool = stmt.query_row(params![performer_id, album_id, title], |row| row.get(0))?;
+fn rola_exists(connection: &Connection, performer_id: i64, album_id: i64, title: &str, path: &str) -> Result<bool> {
+    let mut stmt = connection.prepare("SELECT EXISTS(SELECT 1 FROM rolas WHERE id_performer = ?1 AND id_album = ?2 AND title = ?3 AND path = ?4)")?;
+    let exists: bool = stmt.query_row(params![performer_id, album_id, title, path], |row| row.get(0))?;
     Ok(exists)
 }
 
@@ -119,15 +119,16 @@ fn song_needs_update(
     title: &str,
     track: i32,
     year: i32,
-    genre: &str
+    genre: &str,
+    path: &str
 ) -> Result<bool> {
-    let mut stmt = connection.prepare("SELECT track, year, genre FROM rolas WHERE id_performer = ?1 AND id_album = ?2 AND title = ?3")?;
-    let result: Option<(i32, i32, String)> = stmt.query_row(params![performer_id, album_id, title], |row| {
-        Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+    let mut stmt = connection.prepare("SELECT track, year, genre, path FROM rolas WHERE id_performer = ?1 AND id_album = ?2 AND title = ?3")?;
+    let result: Option<(i32, i32, String, String)> = stmt.query_row(params![performer_id, album_id, title], |row| {
+        Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
     }).optional()?;
 
-    if let Some((db_track, db_year, db_genre)) = result {
-        Ok(track != db_track || year != db_year || genre != db_genre)
+    if let Some((db_track, db_year, db_genre, db_path)) = result {
+        Ok(track != db_track || year != db_year || genre != db_genre || path != db_path)
     } else {
         Ok(false)
     }
@@ -145,20 +146,21 @@ fn insert_or_update_rola(
     genre: &str,
     path: &str
 ) -> Result<()> {
-    if !rola_exists(connection, performer_id, album_id, title)? {
+    // Ahora verificamos la existencia de la canción usando también el path
+    if !rola_exists(connection, performer_id, album_id, title, path)? {
         connection.execute(
             "INSERT INTO rolas (id_performer, id_album, title, track, year, genre, path) 
             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![performer_id, album_id, title, track, year, genre, path]
         )?;
-        println!("Inserted new song: {}", title);
-    } else if song_needs_update(connection, performer_id, album_id, title, track, year, genre)? {
+        println!("Inserted new song: {} with path: {}", title, path);
+    } else if song_needs_update(connection, performer_id, album_id, title, track, year, genre, path)? {
         connection.execute(
             "UPDATE rolas SET track = ?1, year = ?2, genre = ?3, path = ?4
              WHERE id_performer = ?5 AND id_album = ?6 AND title = ?7",
             params![track, year, genre, path, performer_id, album_id, title]
         )?;
-        println!("Updated existing song: {}", title);
+        println!("Updated existing song: {} with new path: {}", title, path);
     }
     Ok(())
 }

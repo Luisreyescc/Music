@@ -1,6 +1,6 @@
 use gtk::prelude::*;
 use gtk::{ProgressBar, Button, TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore};
-use crate::controller::controller::populate_song_list;
+use crate::controller::controller::{populate_song_list, save_directory_to_config, run_data_pipeline, show_error_dialog};
 
 pub fn build_ui() {
     let window = Window::new(WindowType::Toplevel);
@@ -8,6 +8,11 @@ pub fn build_ui() {
     window.set_default_size(800, 600);
 
     let main_box = GtkBox::new(Orientation::Horizontal, 5);
+    main_box.set_margin_top(10);
+    main_box.set_margin_bottom(10);
+    main_box.set_margin_start(10);
+    main_box.set_margin_end(10);
+
     let song_list_box = GtkBox::new(Orientation::Vertical, 5);
     let scrolled_window = ScrolledWindow::new(None::<&gtk::Adjustment>, None::<&gtk::Adjustment>);
     let tree_view = TreeView::new();
@@ -47,6 +52,10 @@ pub fn build_ui() {
     let search_entry = Entry::new();
     search_entry.set_placeholder_text(Some("Search ..."));
     right_box.pack_start(&search_entry, false, false, 0);
+    
+    let directory_entry = Entry::new();
+    directory_entry.set_placeholder_text(Some("Enter music directory here..."));
+    song_list_box.pack_start(&directory_entry, false, false, 5);
 
     let details_box = GtkBox::new(Orientation::Vertical, 5);
     
@@ -79,11 +88,27 @@ pub fn build_ui() {
 
     window.show_all();
 
+    let window_clone = window.clone();
     refresh_button.connect_clicked(move |_| {
+        let directory = directory_entry.text().to_string();
+
+        if directory.is_empty() {
+            show_error_dialog(&window_clone, "No directory provided.");
+            return;
+        }
+
+        if let Err(e) = save_directory_to_config(&directory) {
+            show_error_dialog(&window_clone, &format!("Failed to save directory to config: {}", e));
+            return;
+        }
+
+        run_data_pipeline(&directory);
+
         populate_song_list(&list_store);
     });
    
-    window.connect_delete_event(|_, _| {
+    let _window_clone = window.clone(); 
+    window.connect_delete_event(move |_, _| {
         gtk::main_quit();
         Inhibit(false)
     });
