@@ -1,6 +1,8 @@
 use rusqlite::{params, Connection, Result};
 use std::collections::HashSet;
 use std::path::Path; 
+use gtk::prelude::*;
+use gtk::ListStore;
 use crate::model::music_miner::miner; 
 use crate::config::create_database_file;
 
@@ -10,7 +12,6 @@ pub struct Song {
     pub artist: String,
     pub album: String,
 }
-
 
 /// Retrieves a list of songs from the database.
 ///
@@ -46,6 +47,7 @@ pub fn get_songs_from_database(connection: &Connection) -> Result<Vec<Song>> {
     Ok(songs)
 }
 
+
 /// Retrieves song titles from the database and returns them as a set of strings.
 ///
 /// # Arguments
@@ -68,6 +70,35 @@ fn get_song_titles_from_database(connection: &Connection) -> Result<HashSet<Stri
         db_songs.insert(row?);
     }
     Ok(db_songs)
+}
+
+/// Fills the ListStore with song data from the database.
+pub fn populate_song_list(list_store: &ListStore) {
+    let connection = match create_database_connection() {
+        Ok(conn) => conn,
+        Err(err) => {
+            eprintln!("Failed to connect to the database: {}", err);
+            return;
+        }
+    };
+
+    match get_songs_from_database(&connection) {
+        Ok(songs) => {
+            list_store.clear();
+            
+            for song in songs {
+                let iter = list_store.append();
+                list_store.set(&iter, &[
+                    (0, &song.title), 
+                    (1, &song.artist), 
+                    (2, &song.album)
+                ]);
+            }
+        },
+        Err(err) => {
+            eprintln!("Failed to retrieve songs from the database: {}", err);
+        }
+    };
 }
 
 /// Cleans up songs from the database that are no longer present in the specified music directory.

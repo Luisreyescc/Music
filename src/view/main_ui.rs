@@ -1,5 +1,6 @@
 use gtk::prelude::*;
 use gtk::{TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore};
+use crate::controller::controller::populate_song_list;
 
 pub fn build_ui() {
     let window = Window::new(WindowType::Toplevel);
@@ -7,16 +8,13 @@ pub fn build_ui() {
     window.set_default_size(800, 600);
 
     let main_box = GtkBox::new(Orientation::Horizontal, 5);
-
     let song_list_box = GtkBox::new(Orientation::Vertical, 5);
-
     let scrolled_window = ScrolledWindow::new(None::<&gtk::Adjustment>, None::<&gtk::Adjustment>);
     let tree_view = TreeView::new();
 
     let list_store = ListStore::new(&[glib::Type::STRING, glib::Type::STRING, glib::Type::STRING]);
 
-    let iter = list_store.append();
-    list_store.set(&iter, &[(0, &"4:27"), (1, &"Yellow"), (2, &"Coldplay")]);
+    populate_song_list(&list_store);
 
     tree_view.set_model(Some(&list_store));
 
@@ -45,13 +43,13 @@ pub fn build_ui() {
     song_list_box.pack_start(&scrolled_window, true, true, 0);
 
     let right_box = GtkBox::new(Orientation::Vertical, 5);
-
     let search_entry = Entry::new();
     search_entry.set_placeholder_text(Some("Search ..."));
     right_box.pack_start(&search_entry, false, false, 0);
 
     let details_box = GtkBox::new(Orientation::Vertical, 5);
-
+    
+    // Right box info example
     let label_title = Label::new(Some("Song Metrics"));
     let label_performer = Label::new(Some("Performer(s): Coldplay"));
     let label_song = Label::new(Some("Title: Yellow"));

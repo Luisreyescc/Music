@@ -2,7 +2,6 @@ extern crate dirs;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
-use rusqlite::{Connection, Result};
 
 /// Creates the `/home/user/.config/musicmanager/` directory if it doesn't exist.
 ///
@@ -70,7 +69,7 @@ pub fn create_database_file() -> io::Result<PathBuf> {
     fs::OpenOptions::new()
         .write(true)
         .create(true)
-        .truncate(true)
+        .append(true)
         .open(&file_path)?;
 
     Ok(file_path)
