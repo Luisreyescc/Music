@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use gtk::{TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore};
+use gtk::{ProgressBar, Button, TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore};
 use crate::controller::controller::populate_song_list;
 
 pub fn build_ui() {
@@ -11,10 +11,11 @@ pub fn build_ui() {
     let song_list_box = GtkBox::new(Orientation::Vertical, 5);
     let scrolled_window = ScrolledWindow::new(None::<&gtk::Adjustment>, None::<&gtk::Adjustment>);
     let tree_view = TreeView::new();
+    let refresh_button = Button::with_label("Refresh");
+    let progress_bar = ProgressBar::new();
 
     let list_store = ListStore::new(&[glib::Type::STRING, glib::Type::STRING, glib::Type::STRING]);
 
-    populate_song_list(&list_store);
 
     tree_view.set_model(Some(&list_store));
 
@@ -66,16 +67,22 @@ pub fn build_ui() {
     details_box.pack_start(&label_genre, false, false, 5);
     details_box.pack_start(&label_track, false, false, 5);
 
-    right_box.set_size_request(300, -1); 
+    right_box.set_size_request(500, -1); 
     right_box.pack_start(&details_box, true, true, 0);
 
     main_box.pack_start(&song_list_box, true, true, 0);
     main_box.pack_start(&right_box, false, false, 0);
+    right_box.pack_start(&refresh_button, false, false, 0);
+    right_box.pack_start(&progress_bar, false, false, 5);
 
     window.add(&main_box);
 
     window.show_all();
 
+    refresh_button.connect_clicked(move |_| {
+        populate_song_list(&list_store);
+    });
+   
     window.connect_delete_event(|_, _| {
         gtk::main_quit();
         Inhibit(false)

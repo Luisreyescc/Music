@@ -88,14 +88,10 @@ fn process_song(path: &std::path::Path) -> Option<HashMap<String, String>> {
 
     match Tag::read_from_path(path) {
         Ok(tag) => {
-            if tag.version() == Version::Id3v24 {
-                println!("ID3v2.4 tag found in: {:?} \n", path);
+                println!("Tag found in: {:?} \n", path);
                 let tag_map = song_settings::assign_tag(&tag);
                 print_tag_info(&tag_map);
                 return Some(tag_map);
-            } else {
-                println!("Tag is not ID3v2.4, file: {:?} \n", path);
-            }
         }
         Err(e) => {
             println!("Failed to read the tags in {:?}: {:?} \n", path, e);
