@@ -1,17 +1,49 @@
 use gtk::prelude::*;
-use gtk::{ProgressBar, Button, TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore};
+use gtk::{ProgressBar, Button, TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore, Settings, MenuButton, Popover};
 use crate::controller::controller::{populate_song_list, save_directory_to_config, run_data_pipeline, show_error_dialog};
+use gtk::traits::SettingsExt;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub fn build_ui() {
+    gtk::init().expect("Failed to initialize GTK.");
+
+    let settings = Settings::default().expect("Failed to get default settings");
+
+    let dark_mode_enabled = Rc::new(RefCell::new(true));
+    settings.set_gtk_application_prefer_dark_theme(*dark_mode_enabled.borrow());
+
     let window = Window::new(WindowType::Toplevel);
     window.set_title("Music Manager");
     window.set_default_size(800, 600);
 
-    let main_box = GtkBox::new(Orientation::Horizontal, 5);
+    let main_box = GtkBox::new(Orientation::Vertical, 5);
     main_box.set_margin_top(10);
     main_box.set_margin_bottom(10);
     main_box.set_margin_start(10);
     main_box.set_margin_end(10);
+
+    let header_box = GtkBox::new(Orientation::Horizontal, 0);
+    header_box.set_halign(gtk::Align::End);
+    header_box.set_valign(gtk::Align::Start);
+
+    let menu_button = MenuButton::new();
+    menu_button.set_label("☰");
+
+    let popover = Popover::new(Some(&menu_button));
+    let popover_box = GtkBox::new(Orientation::Vertical, 5);
+    let toggle_theme_button = Button::with_label("Toggle Dark Mode");
+
+    popover_box.pack_start(&toggle_theme_button, false, false, 5);
+    popover.add(&popover_box);
+    popover_box.show_all();
+
+    menu_button.set_popover(Some(&popover));
+    header_box.pack_start(&menu_button, false, false, 5);
+
+    main_box.pack_start(&header_box, false, false, 0);
+
+    let content_box = GtkBox::new(Orientation::Horizontal, 5);
 
     let song_list_box = GtkBox::new(Orientation::Vertical, 5);
     let scrolled_window = ScrolledWindow::new(None::<&gtk::Adjustment>, None::<&gtk::Adjustment>);
@@ -20,7 +52,6 @@ pub fn build_ui() {
     let progress_bar = ProgressBar::new();
 
     let list_store = ListStore::new(&[glib::Type::STRING, glib::Type::STRING, glib::Type::STRING]);
-
 
     tree_view.set_model(Some(&list_store));
 
@@ -56,6 +87,7 @@ pub fn build_ui() {
     let directory_entry = Entry::new();
     directory_entry.set_placeholder_text(Some("Enter music directory here..."));
     song_list_box.pack_start(&directory_entry, false, false, 5);
+    song_list_box.pack_start(&refresh_button, false, false, 5);
 
     let details_box = GtkBox::new(Orientation::Vertical, 5);
     
@@ -76,13 +108,14 @@ pub fn build_ui() {
     details_box.pack_start(&label_genre, false, false, 5);
     details_box.pack_start(&label_track, false, false, 5);
 
-    right_box.set_size_request(500, -1); 
+    right_box.set_size_request(500, -1);
     right_box.pack_start(&details_box, true, true, 0);
 
-    main_box.pack_start(&song_list_box, true, true, 0);
-    main_box.pack_start(&right_box, false, false, 0);
-    right_box.pack_start(&refresh_button, false, false, 0);
+    content_box.pack_start(&song_list_box, true, true, 0);
+    content_box.pack_start(&right_box, false, false, 0);
     right_box.pack_start(&progress_bar, false, false, 5);
+
+    main_box.pack_start(&content_box, true, true, 0);
 
     window.add(&main_box);
 
@@ -106,8 +139,16 @@ pub fn build_ui() {
 
         populate_song_list(&list_store);
     });
-   
-    let _window_clone = window.clone(); 
+
+    let dark_mode_enabled_clone = Rc::clone(&dark_mode_enabled);
+    let settings_clone = settings.clone();
+    toggle_theme_button.connect_clicked(move |_| {
+        let mut dark_mode = dark_mode_enabled_clone.borrow_mut();
+        *dark_mode = !*dark_mode;
+        settings_clone.set_gtk_application_prefer_dark_theme(*dark_mode);
+    });
+
+    let _window_clone = window.clone();
     window.connect_delete_event(move |_, _| {
         gtk::main_quit();
         Inhibit(false)
