@@ -1,6 +1,6 @@
 use gtk::prelude::*;
-use gtk::{ProgressBar, Button, TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore, Settings, MenuButton, Popover};
-use crate::controller::controller::{populate_song_list, save_directory_to_config, run_data_pipeline, show_error_dialog};
+use gtk::{ProgressBar, Button, TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore, Settings, MenuButton, Popover, Frame};
+use crate::controller::controller::{populate_song_list, save_directory_to_config, run_data_pipeline, show_error_dialog, get_song_details};
 use gtk::traits::SettingsExt;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -15,7 +15,7 @@ pub fn build_ui() {
 
     let window = Window::new(WindowType::Toplevel);
     window.set_title("Music Manager");
-    window.set_default_size(800, 600);
+    window.set_default_size(900, 600);
 
     let main_box = GtkBox::new(Orientation::Vertical, 5);
     main_box.set_margin_top(10);
@@ -41,22 +41,22 @@ pub fn build_ui() {
     menu_button.set_popover(Some(&popover));
     header_box.pack_start(&menu_button, false, false, 5);
 
-    main_box.pack_start(&header_box, false, false, 0);
-
-    let content_box = GtkBox::new(Orientation::Horizontal, 5);
+    let content_box = GtkBox::new(Orientation::Horizontal, 10);
 
     let song_list_box = GtkBox::new(Orientation::Vertical, 5);
+    let directory_entry = Entry::new();
+    directory_entry.set_placeholder_text(Some("Enter music directory here..."));
+    song_list_box.pack_start(&directory_entry, false, false, 5);
+
+    let refresh_button = Button::with_label("Refresh");
+    song_list_box.pack_start(&refresh_button, false, false, 0);
+
     let scrolled_window = ScrolledWindow::new(None::<&gtk::Adjustment>, None::<&gtk::Adjustment>);
     let tree_view = TreeView::new();
-    let refresh_button = Button::with_label("Refresh");
-    let progress_bar = ProgressBar::new();
-
     let list_store = ListStore::new(&[glib::Type::STRING, glib::Type::STRING, glib::Type::STRING]);
-
     tree_view.set_model(Some(&list_store));
 
     let renderer = CellRendererText::new();
-    
     let col_title = TreeViewColumn::new();
     col_title.set_title("Title");
     col_title.pack_start(&renderer, true);
@@ -77,48 +77,46 @@ pub fn build_ui() {
     tree_view.append_column(&col_album);
 
     scrolled_window.add(&tree_view);
-    song_list_box.pack_start(&scrolled_window, true, true, 0);
+    song_list_box.pack_start(&scrolled_window, true, true, 5);
 
-    let right_box = GtkBox::new(Orientation::Vertical, 5);
+    let progress_bar = ProgressBar::new();
+    song_list_box.pack_start(&progress_bar, false, false, 5);
+
+    let right_box = GtkBox::new(Orientation::Vertical, 10);
+
     let search_entry = Entry::new();
     search_entry.set_placeholder_text(Some("Search ..."));
     right_box.pack_start(&search_entry, false, false, 0);
-    
-    let directory_entry = Entry::new();
-    directory_entry.set_placeholder_text(Some("Enter music directory here..."));
-    song_list_box.pack_start(&directory_entry, false, false, 5);
-    song_list_box.pack_start(&refresh_button, false, false, 5);
 
-    let details_box = GtkBox::new(Orientation::Vertical, 5);
-    
-    // Right box info example
-    let label_title = Label::new(Some("Song Metrics"));
-    let label_performer = Label::new(Some("Performer(s): Coldplay"));
-    let label_song = Label::new(Some("Title: Yellow"));
-    let label_album = Label::new(Some("Album: Parachutes"));
-    let label_year = Label::new(Some("Year: 2000"));
-    let label_genre = Label::new(Some("Content type: Alternative rock"));
-    let label_track = Label::new(Some("Track number (in album): 5"));
+    let details_frame = Frame::new(Some("Song Details"));
+    let details_box = GtkBox::new(Orientation::Vertical, 10);
+    details_box.set_margin_top(10);
+    details_box.set_margin_bottom(10);
+    details_box.set_margin_start(10);
+    details_box.set_margin_end(10);
+
+    let label_title = Label::new(Some("Title: "));
+    let label_path = Label::new(Some("Path: "));
+    let label_track = Label::new(Some("Track number: "));
+    let label_year = Label::new(Some("Year: "));
+    let label_genre = Label::new(Some("Genre: "));
 
     details_box.pack_start(&label_title, false, false, 5);
-    details_box.pack_start(&label_performer, false, false, 5);
-    details_box.pack_start(&label_song, false, false, 5);
-    details_box.pack_start(&label_album, false, false, 5);
+    details_box.pack_start(&label_path, false, false, 5);
+    details_box.pack_start(&label_track, false, false, 5);
     details_box.pack_start(&label_year, false, false, 5);
     details_box.pack_start(&label_genre, false, false, 5);
-    details_box.pack_start(&label_track, false, false, 5);
 
-    right_box.set_size_request(500, -1);
-    right_box.pack_start(&details_box, true, true, 0);
+    details_frame.add(&details_box);
+    right_box.pack_start(&details_frame, true, true, 0);
 
     content_box.pack_start(&song_list_box, true, true, 0);
     content_box.pack_start(&right_box, false, false, 0);
-    right_box.pack_start(&progress_bar, false, false, 5);
 
+    main_box.pack_start(&header_box, false, false, 0);
     main_box.pack_start(&content_box, true, true, 0);
 
     window.add(&main_box);
-
     window.show_all();
 
     let window_clone = window.clone();
@@ -138,6 +136,25 @@ pub fn build_ui() {
         run_data_pipeline(&directory);
 
         populate_song_list(&list_store);
+    });
+
+    let label_title_clone = label_title.clone();
+    let label_path_clone = label_path.clone();
+    let label_track_clone = label_track.clone();
+    let label_year_clone = label_year.clone();
+    let label_genre_clone = label_genre.clone();
+
+    tree_view.connect_cursor_changed(move |tree_view| {
+        if let Some((model, iter)) = tree_view.selection().selected() {
+            let title: String = model.value(&iter, 0).get().unwrap();
+            if let Ok(song_details) = get_song_details(&title) {
+                label_title_clone.set_text(&format!("Title: {}", song_details.title));
+                label_path_clone.set_text(&format!("Path: {}", song_details.path));
+                label_track_clone.set_text(&format!("Track number: {}", song_details.track_number));
+                label_year_clone.set_text(&format!("Year: {}", song_details.year));
+                label_genre_clone.set_text(&format!("Genre: {}", song_details.genre));
+            }
+        }
     });
 
     let dark_mode_enabled_clone = Rc::clone(&dark_mode_enabled);

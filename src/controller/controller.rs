@@ -1,4 +1,5 @@
 use rusqlite::{params, Connection, Result};
+use std::error::Error;
 use std::fs;
 use std::io::{self, Write};
 use std::collections::{HashSet, HashMap};
@@ -12,46 +13,53 @@ use crate::populate_db::{insert_types, populate_database};
 use crate::config::{create_database_file, create_config_dir, create_config_file};
 
 /// Represents a song with its title, artist, and album.
-pub struct Song {
+pub struct SongDetails {
     pub title: String,
     pub artist: String,
     pub album: String,
+    pub path: String,
+    pub track_number: i32,
+    pub year: i32,
+    pub genre: String,
 }
 
-/// Retrieves a list of songs from the database.
+/// Fetches a list of songs from the database with their details.
+///
+/// Queries the database for song details (title, artist, album, path, track number, year, and genre), 
+/// handling potential `NULL` values for artist and album by using "Unknown".
 ///
 /// # Arguments
-///
-/// * `connection` - A reference to the database connection.
+/// * `connection` - Reference to a SQLite `Connection` for database access.
 ///
 /// # Returns
-///
-/// This function returns a `Result` containing a vector of `Song`
-/// structs if the operation is successful, or an error if it fails.
-pub fn get_songs_from_database(connection: &Connection) -> Result<Vec<Song>> {
-    let mut stmt = connection.prepare("
-        SELECT rolas.title, performers.name, albums.name
+/// * `Ok(Vec<SongDetails>)` - A vector of `SongDetails` structs.
+/// * `Err(rusqlite::Error)` - If the query or mapping fails.
+pub fn get_songs_from_database(connection: &Connection) -> Result<Vec<SongDetails>> {
+    let mut stmt = connection.prepare(
+        "SELECT rolas.title, performers.name, albums.name, rolas.path, rolas.track, rolas.year, rolas.genre
         FROM rolas
-        JOIN performers ON rolas.id_performer = performers.id_performer
-        JOIN albums ON rolas.id_album = albums.id_album
-    ")?;
+        LEFT JOIN performers ON rolas.id_performer = performers.id_performer
+        LEFT JOIN albums ON rolas.id_album = albums.id_album"
+    )?;
 
-    let song_iter = stmt.query_map([], |row| {
-        Ok(Song {
-            title: row.get(0)?, 
-            artist: row.get(1)?,
-            album: row.get(2)?, 
+    let rows = stmt.query_map([], |row| {
+        Ok(SongDetails {
+            title: row.get(0)?,
+            artist: row.get(1).unwrap_or_else(|_| String::from("Unknown")),
+            album: row.get(2).unwrap_or_else(|_| String::from("Unknown")),
+            path: row.get(3)?,
+            track_number: row.get(4)?,
+            year: row.get(5)?,
+            genre: row.get(6)?,
         })
     })?;
 
     let mut songs = Vec::new();
-    for song in song_iter {
+    for song in rows {
         songs.push(song?);
     }
-
     Ok(songs)
 }
-
 
 /// Retrieves song titles from the database and returns them as a set of strings.
 ///
@@ -77,7 +85,38 @@ fn get_song_titles_from_database(connection: &Connection) -> Result<HashSet<Stri
     Ok(db_songs)
 }
 
-/// Fills the ListStore with song data from the database.
+pub fn get_song_details(title: &str) -> Result<SongDetails, Box<dyn Error>> {
+    let db_path = create_database_file()?;
+    let conn = Connection::open(db_path)?;
+
+    let mut stmt = conn.prepare("SELECT title, path, track, year, genre FROM rolas WHERE title = ?1")?;
+    let mut rows = stmt.query([title])?;
+
+    if let Some(row) = rows.next()? {
+        Ok(SongDetails {
+            title: row.get::<_, String>(0)?,
+            artist: String::from("Unknown"),
+            album: String::from("Unknown"),
+            path: row.get::<_, String>(1)?,
+            track_number: row.get::<_, i32>(2)?,
+            year: row.get::<_, i32>(3)?,
+            genre: row.get::<_, String>(4)?,
+        })
+    } else {
+        Err("No song found with the given title".into())
+    }
+}
+
+/// Populates the given `ListStore` with songs from the database.
+///
+/// Retrieves a list of songs from the database and populates the `ListStore` with
+/// song details (title, artist, album). Clears the existing contents of the list before adding the new entries.
+///
+/// # Arguments
+/// * `list_store` - A reference to the `ListStore` where the song data will be inserted.
+///
+/// # Errors
+/// Prints an error to the console if the database connection fails or if songs cannot be retrieved.
 pub fn populate_song_list(list_store: &ListStore) {
     let connection = match create_database_connection() {
         Ok(conn) => conn,
@@ -157,6 +196,17 @@ pub fn create_database_connection() -> Result<Connection> {
     Ok(connection)
 }
 
+/// Saves the provided music directory path to a configuration file.
+///
+/// Writes the music directory path to a `Config.TOML` file in the configuration directory.
+/// If the file or directory does not exist, it is created.
+///
+/// # Arguments
+/// * `directory` - The path to the music directory to save.
+///
+/// # Returns
+/// * `Ok(())` - On success.
+/// * `Err(io::Error)` - If there is an issue creating the config directory or writing to the file.
 pub fn save_directory_to_config(directory: &str) -> io::Result<()> {
     let config_dir = create_config_dir()?;
     let file_path = config_dir.join("Config.TOML");
