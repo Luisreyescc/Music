@@ -1,6 +1,6 @@
 use gtk::prelude::*;
 use gtk::{ProgressBar, Button, TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, 
-    Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore, Settings, MenuButton, Popover, Frame};
+    Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore, Settings, MenuButton, Popover, Frame, FileChooserAction, FileChooserDialog, ResponseType, Image};
 use crate::controller::controller::{populate_song_list, save_directory_to_config, 
     create_database_connection, show_error_dialog, get_song_details, remove_database_file_if_exists, 
     extract_songs_from_directory, insert_song_into_database, create_tables_if_not_exist};
@@ -16,7 +16,7 @@ pub fn build_ui() {
     let dark_mode_enabled = Rc::new(RefCell::new(true));
     settings.set_gtk_application_prefer_dark_theme(*dark_mode_enabled.borrow());
 
-    let window = Window::new(WindowType::Toplevel);
+    let window = Rc::new(Window::new(WindowType::Toplevel));
     window.set_title("Music Manager");
     window.set_default_size(900, 600);
 
@@ -47,9 +47,19 @@ pub fn build_ui() {
     let content_box = GtkBox::new(Orientation::Horizontal, 10);
 
     let song_list_box = GtkBox::new(Orientation::Vertical, 5);
+
+    // Campo de entrada para el directorio y botón para elegir directorio
+    let directory_box = GtkBox::new(Orientation::Horizontal, 5);
     let directory_entry = Entry::new();
     directory_entry.set_placeholder_text(Some("Enter music directory here..."));
-    song_list_box.pack_start(&directory_entry, false, false, 5);
+
+    let folder_button = Button::new();
+    let folder_image = Image::from_icon_name(Some("folder"), gtk::IconSize::Button);
+    folder_button.set_image(Some(&folder_image));
+
+    directory_box.pack_start(&directory_entry, true, true, 0);
+    directory_box.pack_start(&folder_button, false, false, 0);
+    song_list_box.pack_start(&directory_box, false, false, 5);
 
     let refresh_button = Button::with_label("Refresh");
     song_list_box.pack_start(&refresh_button, false, false, 0);
@@ -121,6 +131,28 @@ pub fn build_ui() {
 
     window.add(&main_box);
     window.show_all();
+
+    let window_clone = Rc::clone(&window);
+    let directory_entry_clone = directory_entry.clone();
+    folder_button.connect_clicked(move |_| {
+        let dialog = FileChooserDialog::new(
+            Some("Select Music Directory"),
+            Some(&*window_clone),
+            FileChooserAction::SelectFolder,
+        );
+        dialog.add_buttons(&[
+            ("Cancel", ResponseType::Cancel),
+            ("Select", ResponseType::Accept),
+        ]);
+
+        if dialog.run() == ResponseType::Accept {
+            if let Some(folder) = dialog.filename() {
+                directory_entry_clone.set_text(folder.to_str().unwrap());
+            }
+        }
+
+        dialog.close();
+    });
 
     {
         let list_store = Rc::clone(&list_store);
