@@ -1,6 +1,9 @@
 use gtk::prelude::*;
-use gtk::{ProgressBar, Button, TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore, Settings, MenuButton, Popover, Frame};
-use crate::controller::controller::{populate_song_list, save_directory_to_config, run_data_pipeline, show_error_dialog, get_song_details};
+use gtk::{ProgressBar, Button, TreeView, TreeViewColumn, CellRendererText, Box as GtkBox, 
+    Orientation, Window, WindowType, Label, Entry, ScrolledWindow, ListStore, Settings, MenuButton, Popover, Frame};
+use crate::controller::controller::{populate_song_list, save_directory_to_config, 
+    create_database_connection, show_error_dialog, get_song_details, remove_database_file_if_exists, 
+    extract_songs_from_directory, insert_song_into_database, create_tables_if_not_exist};
 use gtk::traits::SettingsExt;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -120,20 +123,72 @@ pub fn build_ui() {
     window.show_all();
 
     let window_clone = window.clone();
+
     refresh_button.connect_clicked(move |_| {
+        if let Err(e) = remove_database_file_if_exists() {
+            eprintln!("Error: Could not remove existing database file: {}", e);
+            show_error_dialog(&window_clone, &format!("Error: {}", e));
+            return;
+        }
+
         let directory = directory_entry.text().to_string();
 
         if directory.is_empty() {
+            eprintln!("Error: No directory provided.");
             show_error_dialog(&window_clone, "No directory provided.");
             return;
         }
 
         if let Err(e) = save_directory_to_config(&directory) {
+            eprintln!("Failed to save directory to config: {}", e);
             show_error_dialog(&window_clone, &format!("Failed to save directory to config: {}", e));
             return;
         }
 
-        run_data_pipeline(&directory);
+        let extracted_data = extract_songs_from_directory(&directory);
+        let total_songs = extracted_data.len() as f64;
+
+        if total_songs == 0.0 {
+            eprintln!("No songs found in the specified directory.");
+            show_error_dialog(&window_clone, "No songs found in the specified directory.");
+            return;
+        }
+        
+        let connection = match create_database_connection() {
+            Ok(conn) => conn,
+            Err(err) => {
+                eprintln!("Failed to connect to the database: {}", err);
+                show_error_dialog(&window_clone, &format!("Failed to connect to the database: {}", err));
+                return;
+            }
+        };
+
+        if let Err(e) = create_tables_if_not_exist(&connection) {
+            eprintln!("Failed to create tables in the database: {}", e);
+            show_error_dialog(&window_clone, &format!("Failed to create tables in the database: {}", e));
+            return;
+        }
+
+        let mut processed_songs = 0.0;
+        for tag_map in extracted_data {
+            match insert_song_into_database(&connection, tag_map) {
+                Ok(_) => {
+                    processed_songs += 1.0;
+
+                    let progress = processed_songs / total_songs;
+                    progress_bar.set_fraction(progress);
+                    progress_bar.set_text(Some(&format!("{:.0}% Complete", progress * 100.0)));
+
+                    while gtk::events_pending() {
+                        gtk::main_iteration();
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to insert song into database: {}", e);
+                    show_error_dialog(&window_clone, &format!("Failed to insert song into database: {}", e));
+                }
+            }
+        }
 
         populate_song_list(&list_store);
     });

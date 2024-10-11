@@ -196,6 +196,21 @@ pub fn create_database_connection() -> Result<Connection> {
     Ok(connection)
 }
 
+pub fn remove_database_file_if_exists() -> Result<()> {
+    let file_path = match create_database_file() {
+        Ok(path) => path,
+        Err(e) => return Err(rusqlite::Error::ToSqlConversionFailure(Box::new(e))),
+    };
+
+    if Path::new(&file_path).exists() {
+        if let Err(e) = fs::remove_file(&file_path) {
+            eprintln!("Error al eliminar el archivo: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
 /// Saves the provided music directory path to a configuration file.
 ///
 /// Writes the music directory path to a `Config.TOML` file in the configuration directory.
@@ -350,3 +365,60 @@ pub fn show_error_dialog(window: &Window, message: &str) {
     dialog.run();
     dialog.close();
 }
+
+/// Ensures that the required database tables exist.
+/// 
+/// This function checks if all necessary tables in the database exist, and if not, it creates them.
+/// It calls the internal function `create_all_tables` to handle the table creation process.
+/// 
+/// # Arguments
+/// 
+/// * `connection` - A reference to the active database connection (`&Connection`).
+/// 
+/// # Returns
+/// 
+/// * `Result<(), Box<dyn std::error::Error>>` - Returns `Ok(())` if the operation is successful,
+///   or an error wrapped in `Box<dyn std::error::Error>` if the table creation fails.
+pub fn create_tables_if_not_exist(connection: &Connection) -> Result<(), Box<dyn std::error::Error>> {
+    create_all_tables(connection)?;
+    Ok(())
+}
+
+/// Inserts song data into the database.
+/// 
+/// This function takes a connection to the database and a `HashMap` containing song data, 
+/// and inserts that data into the corresponding table in the database.
+/// It relies on the `populate_database` function to handle the actual data insertion.
+/// 
+/// # Arguments
+/// 
+/// * `connection` - A reference to the active database connection (`&Connection`).
+/// * `song_data` - A `HashMap` where the keys are `String` values representing song attributes
+///   (e.g., title, artist, album) and the values are their corresponding data.
+/// 
+/// # Returns
+/// 
+/// * `Result<(), rusqlite::Error>` - Returns `Ok(())` if the insertion is successful, or a 
+///   `rusqlite::Error` if the operation fails.
+pub fn insert_song_into_database(connection: &Connection, song_data: HashMap<String, String>) -> Result<(), rusqlite::Error> {
+    populate_database(connection, song_data)
+}
+
+/// Extracts song metadata from a directory of music files.
+/// 
+/// This function scans the specified directory for music files and extracts metadata (such as title,
+/// artist, and album) for each song. It returns a vector of `HashMap` objects, where each map
+/// represents the metadata for a single song.
+/// 
+/// # Arguments
+/// 
+/// * `directory` - A string slice (`&str`) representing the path to the directory containing music files.
+/// 
+/// # Returns
+/// 
+/// * `Vec<HashMap<String, String>>` - A vector of hash maps, each representing the metadata for an extracted song.
+pub fn extract_songs_from_directory(directory: &str) -> Vec<HashMap<String, String>> {
+    miner::extract(directory)
+}
+
+
