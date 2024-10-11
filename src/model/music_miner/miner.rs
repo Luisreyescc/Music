@@ -45,23 +45,55 @@ pub fn extract(mp3_dir_path: &str) -> Vec<HashMap<String, String>> {
 /// Panics if the directory cannot be read.
 fn visit_dirs(dir: &Path, extracted_data: &mut Vec<HashMap<String, String>>) {
     if dir.is_dir() {
-        let music = fs::read_dir(dir).expect("Could not read the directory.");
-        
-        for song in music {
-            let song = song.expect("Could not read the entry.");
-            let path = song.path();
-            
-            if path.is_dir() {
-                visit_dirs(&path, extracted_data);
-            } else if path.is_file() {
-                if let Some(mut tag_map) = process_song(&path) {
-                    let album_path = path.parent().unwrap_or_else(|| Path::new("")).to_path_buf();
-                    tag_map.insert("Path".to_string(), path.to_str().unwrap().to_string());
-                    tag_map.insert("AlbumPath".to_string(), album_path.to_str().unwrap().to_string());
-                    extracted_data.push(tag_map);
-                } else {
-                    println!("{:?} is not a valid MP3 file", path);
+        match fs::read_dir(dir) {
+            Ok(music) => {
+                for song in music {
+                    match song {
+                        Ok(entry) => {
+                            let path = entry.path();
+
+                            if path.is_dir() {
+                                visit_dirs(&path, extracted_data);
+                            } else if path.is_file() {
+                                if let Some(mut tag_map) = process_song(&path) {
+                                    if let Some(album_path) = path.parent() {
+                                        if let Some(path_str) = path.to_str() {
+                                            tag_map.insert("Path".to_string(), path_str.to_string());
+                                        } else {
+                                            println!("Could not convert path to string for {:?}", path);
+                                            tag_map.insert("Path".to_string(), "Unknown".to_string());
+                                        }
+
+                                        if let Some(album_path_str) = album_path.to_str() {
+                                            tag_map.insert("AlbumPath".to_string(), album_path_str.to_string());
+                                        } else {
+                                            println!("Could not convert album path to string for {:?}", album_path);
+                                            tag_map.insert("AlbumPath".to_string(), "Unknown".to_string());
+                                        }
+                                    } else {
+                                        println!("The file {:?} does not have a valid parent directory.", path);
+                                        if let Some(path_str) = path.to_str() {
+                                            tag_map.insert("Path".to_string(), path_str.to_string());
+                                        } else {
+                                            println!("Could not convert path to string for {:?}", path);
+                                            tag_map.insert("Path".to_string(), "Unknown".to_string());
+                                        }
+                                        tag_map.insert("AlbumPath".to_string(), "Unknown".to_string());
+                                    }
+                                    extracted_data.push(tag_map);
+                                } else {
+                                    println!("{:?} is not a valid MP3 file", path);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            println!("Could not read the entry: {}", e);
+                        }
+                    }
                 }
+            }
+            Err(e) => {
+                println!("Could not read the directory: {}", e);
             }
         }
     }
