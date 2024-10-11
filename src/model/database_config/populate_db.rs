@@ -8,9 +8,9 @@ use rusqlite::OptionalExtension;
 /// These types represent different kinds of entities, such as "Person", "Group", or "Unknown".
 /// It executes three insert statements, one for each type.
 pub fn insert_types(connection: &Connection) -> Result<()> {
-    connection.execute("INSERT INTO types VALUES(?1,?2)", (0, "Person"),)?;
-    connection.execute("INSERT INTO types VALUES(?1,?2)", (1, "Group"),)?;
-    connection.execute("INSERT INTO types VALUES(?1,?2)", (2, "Unknown"),)?;
+    connection.execute("INSERT OR IGNORE INTO types VALUES(?1,?2)", (0, "Person"),)?;
+    connection.execute("INSERT OR IGNORE INTO types VALUES(?1,?2)", (1, "Group"),)?;
+    connection.execute("INSERT OR IGNORE INTO types VALUES(?1,?2)", (2, "Unknown"),)?;
     Ok(())
 }
 
@@ -169,6 +169,8 @@ fn insert_or_update_rola(
 /// The tag map contains metadata such as the artist's name, album, title, track number, year, and genre.
 /// It first finds or inserts the performer and album, then inserts the new track (song).
 pub fn populate_database(connection: &Connection, tag_map: HashMap<String, String>) -> Result<()> {
+    insert_types(connection)?;    
+
     let artist = tag_map.get("Artist").unwrap();
     let title = tag_map.get("Title").unwrap();
     let album = tag_map.get("Album").unwrap();

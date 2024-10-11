@@ -23,35 +23,6 @@ pub fn create_config_dir() -> io::Result<PathBuf> {
     }
 }
 
-/// Creates the `Config.TOML` file inside the `~/.config/musicmanager/` directory if it doesn't exist.
-///
-/// This function ensures that the `Config.TOML` file is created within the `musicmanager`
-/// directory inside the user's configuration path. If the file already exists, it is not
-/// modified. If it doesn't exist, an empty file is created.
-///
-/// # Returns
-///
-/// - `Ok(())` if the file is successfully created or already exists.
-/// - `Err(io::Error)` if there is an error finding the directory or creating the file.
-pub fn create_config_file() -> io::Result<()> {
-    match create_config_dir() {
-        Ok(config_dir) => {
-            let file_path = config_dir.join("Config.TOML");
-
-            let _file = fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(&file_path)?;
-
-            Ok(())
-        }
-        Err(e) => {
-            Err(e) 
-        }
-    }
-
-}
-
 /// Creates the `database.db` file inside the `~/.config/musicmanager/` directory if it doesn't exist.
 ///
 /// This function ensures that the `database.db` file is created within the `musicmanager`
