@@ -98,7 +98,7 @@ pub fn build_ui() {
     let right_box = GtkBox::new(Orientation::Vertical, 10);
 
     let search_entry = Entry::new();
-    search_entry.set_placeholder_text(Some("Search ..."));
+    search_entry.set_placeholder_text(Some("Search by artist (n:), title (t:), or album (a:). Use && to combine two or more fields."));
     right_box.pack_start(&search_entry, false, false, 0);
 
     let details_frame = Frame::new(Some("Song Details"));

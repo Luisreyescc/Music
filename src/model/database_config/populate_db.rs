@@ -38,7 +38,7 @@ fn insert_or_update_performer(connection: &Connection, artist: &str) -> Result<i
         Some(id) => {
             if performer_needs_update(connection, id, artist)? {
                 connection.execute(
-                    "UPDATE performers SET name = ?1 WHERE id_performer = ?2",
+                    "UPDATE performers SET name = ?1, id_type = 2 WHERE id_performer = ?2",
                     params![artist, id]
                 )?;
                 println!("Updated performer: {}", artist);
@@ -47,7 +47,7 @@ fn insert_or_update_performer(connection: &Connection, artist: &str) -> Result<i
         },
         None => {
             connection.execute(
-                "INSERT INTO performers (name) VALUES (?1)",
+                "INSERT INTO performers (name, id_type) VALUES (?1, 2)",
                 params![artist]
             )?;
             let new_id = connection.last_insert_rowid();
