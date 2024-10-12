@@ -33,13 +33,20 @@ Music Manager is a GTK-based desktop application that helps you manage your musi
  sudo apt install libgtk-3-dev sqlite3 libsqlite3-dev
  ```
  
- ### Fedora (or similar)
+ ### Fedora
  
- Run the following commands:
  
  ```bash
  sudo dnf install gtk3-devel sqlite sqlite-devel
  ```
+
+ ### Arch
+ 
+ 
+ ```bash
+ sudo pacman -S rust gtk3 sqlite
+ ```
+ 
  
  ## Building the Project
  
@@ -47,8 +54,6 @@ Music Manager is a GTK-based desktop application that helps you manage your musi
  
  ```bash
  git clone https://github.com/Luisreyescc/MusicManager.git
- cd music-manager
- cargo build
  ```
  
  ## Running the Application
