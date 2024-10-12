@@ -65,6 +65,15 @@ Music Manager is a GTK-based desktop application that helps you manage your musi
  cargo run
  ```
  
+ ## Documentation
+You can generate the Rust documentation for this project by using Cargo’s built-in functionality. 
+To generate the documentation, run the following command:
+ 
+ ```bash
+ cargo doc --open
+ ```
+ This will build the documentation and open it in your default browser.
+ 
  ## Usage
 
  1. **Select a Directory**: You can either type the directory path or click on the folder icon to visually select a directory containing music files.
@@ -81,4 +90,3 @@ Music Manager is a GTK-based desktop application that helps you manage your musi
  3. Commit your changes (`git commit -am 'Add new feature'`).
  4. Push to the branch (`git push origin feature-branch`).
  5. Create a pull request.
- .
